@@ -28,6 +28,7 @@ func main() {
 	}
 
 	cmd.Flags().Bool("fullscreen", false, "whether or not to start the program in fullscreen mode")
+	cmd.Flags().Float64("scale", 1, "The scaling factor to use for visualizations")
 
 	if err := cmd.Execute(); err != nil {
 		logrus.WithError(err).Fatal("exiting with error")
@@ -41,7 +42,7 @@ func runE(_ *cobra.Command, args []string) error {
 		WindowHeight: 600,
 	}
 
-	rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint)
+	//rl.SetConfigFlags(rl.FlagMsaa4xHint | rl.FlagVsyncHint)
 	rl.InitWindow(cfg.WindowWidth, cfg.WindowHeight, "some kinda visualizer")
 
 	if viper.GetBool("fullscreen") {
@@ -56,10 +57,15 @@ func runE(_ *cobra.Command, args []string) error {
 
 	rl.SetTargetFPS(60)
 
+	scale := viper.GetFloat64("scale")
+	scaleCamera := rl.NewCamera2D(rl.Vector2{}, rl.Vector2{}, 0, float32(scale))
+
+	cfg.WindowWidth = int32(float64(cfg.WindowWidth) / scale)
+	cfg.WindowHeight = int32(float64(cfg.WindowHeight) / scale)
 	v := visualizer.NewPlinko(cfg)
 	debug := false
 
-	for !rl.WindowShouldClose() { //} && ctx.Err() == nil {
+	for !rl.WindowShouldClose() {
 		if rl.GetCharPressed() == 'd' {
 			debug = !debug
 		}
@@ -67,7 +73,10 @@ func runE(_ *cobra.Command, args []string) error {
 		v.Update(rl.GetFrameTime())
 
 		rl.BeginDrawing()
+
+		rl.BeginMode2D(scaleCamera)
 		v.Draw(debug)
+		rl.EndMode2D()
 
 		if debug {
 			rl.DrawText(fmt.Sprintf("FPS: %.2f; %v", rl.GetFPS(), rl.GetKeyPressed()), 10, 10, 12, rl.RayWhite)
