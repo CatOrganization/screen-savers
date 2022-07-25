@@ -54,11 +54,11 @@ func NewPlinko(cfg Config) *Plinko {
 	rightWallShape.Set(box2d.MakeB2Vec2(float64(cfg.WindowWidth), 0), box2d.MakeB2Vec2(float64(cfg.WindowWidth), float64(cfg.WindowHeight)))
 	wallsBody.CreateFixture(rightWallShape, 1)
 
-	for y := 100; y < int(cfg.WindowHeight)-50; y += 100 {
-		for x := 100; x < int(cfg.WindowWidth)-100; x += 100 {
+	for y := 0; y < int(cfg.WindowHeight); y += 100 {
+		for x := 0; x < int(cfg.WindowWidth); x += 100 {
 			pegBodyDef := box2d.NewB2BodyDef()
-			pegBodyDef.Type = box2d.B2BodyType.B2_staticBody
-			pegBodyDef.Position.Set(float64(x), float64(y))
+			pegBodyDef.Type = box2d.B2BodyType.B2_dynamicBody
+			pegBodyDef.Position.Set(float64(x), float64(y)+25)
 			if y%200 == 0 {
 				pegBodyDef.Position.X += 50
 			}
@@ -69,6 +69,14 @@ func NewPlinko(cfg Config) *Plinko {
 			pegFixture := pegBody.CreateFixture(pegShape, 1)
 			pegFixture.SetRestitution(0.2)
 			pegFixture.SetUserData(NewPlinkoPegDrawableContactListener(pegShape))
+
+			jointDef := box2d.MakeB2MouseJointDef()
+			jointDef.SetBodyA(wallsBody)
+			jointDef.SetBodyB(pegBody)
+
+			jointDef.Target.Set(pegBody.GetPosition().X, pegBody.GetPosition().Y)
+			jointDef.MaxForce = 2500 * pegBody.GetMass()
+			world.CreateJoint(&jointDef)
 		}
 	}
 
