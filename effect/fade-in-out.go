@@ -36,6 +36,10 @@ func (f *FadeInOut) Value() float64 {
 	return f.value
 }
 
+func (f *FadeInOut) IsChanging() bool {
+	return f.state == fadeIn || f.state == fadeOut || f.state == fadeInPendingFadeout
+}
+
 func (f *FadeInOut) OnFadeInEvent() {
 	if f.state == invisible || f.state == fadeOut {
 		f.state = fadeIn

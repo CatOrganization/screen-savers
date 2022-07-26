@@ -23,12 +23,19 @@ type PlinkoPegDrawableContactListener struct {
 	fadeInOut     *effect.FadeInOut
 	totalContacts int
 	temperature   int
+
+	shader                  rl.Shader
+	lightIntensityShaderLoc int32
+	lightPositionShaderLoc  int32
 }
 
-func NewPlinkoPegDrawableContactListener(shape *box2d.B2CircleShape) *PlinkoPegDrawableContactListener {
+func NewPlinkoPegDrawableContactListener(shape *box2d.B2CircleShape, shader rl.Shader, lightIntensityShaderLoc, lightPositionShaderLoc int32) *PlinkoPegDrawableContactListener {
 	return &PlinkoPegDrawableContactListener{
-		shape:     shape,
-		fadeInOut: effect.NewFadeInOut(time.Second/5, time.Second/2),
+		shape:                   shape,
+		fadeInOut:               effect.NewFadeInOut(time.Second/5, time.Second*2),
+		shader:                  shader,
+		lightIntensityShaderLoc: lightIntensityShaderLoc,
+		lightPositionShaderLoc:  lightPositionShaderLoc,
 	}
 }
 
@@ -59,8 +66,11 @@ func (p *PlinkoPegDrawableContactListener) Draw(dt float32, body *box2d.B2Body, 
 		R: 255,
 		G: intensity,
 		B: intensity,
-		A: maxUint8(25, uint8(255*p.fadeInOut.Value())),
+		A: 255, // maxUint8(25, uint8(255*p.fadeInOut.Value())),
 	}
+
+	rl.SetShaderValue(p.shader, p.lightIntensityShaderLoc, []float32{float32(p.fadeInOut.Value())}, rl.ShaderUniformFloat)
+	rl.SetShaderValue(p.shader, p.lightPositionShaderLoc, []float32{float32(body.GetPosition().X), float32(body.GetPosition().Y)}, rl.ShaderUniformVec2)
 
 	rl.DrawCircle(int32(worldCenter.X), int32(worldCenter.Y), float32(p.shape.GetRadius()), lightenColor(c))
 	rl.DrawCircleLines(int32(worldCenter.X), int32(worldCenter.Y), float32(p.shape.GetRadius()), c)
@@ -111,7 +121,7 @@ func (p *PlinkoPelletDrawableContactListener) Draw(dt float32, body *box2d.B2Bod
 		R: 255,
 		G: intensity,
 		B: intensity,
-		A: maxUint8(25, uint8(255*p.fadeInOut.Value())),
+		A: 255, //maxUint8(25, uint8(255*p.fadeInOut.Value())),
 	}
 
 	for i := 0; i < p.shape.M_count; i++ {

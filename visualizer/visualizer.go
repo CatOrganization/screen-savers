@@ -7,4 +7,5 @@ type Visualizer interface {
 
 type Config struct {
 	WindowWidth, WindowHeight int32
+	ScaleFactor               float32
 }

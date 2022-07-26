@@ -10,7 +10,8 @@ import (
 type Plinko struct {
 	cfg Config
 
-	world *box2d.B2World
+	world  *box2d.B2World
+	shader rl.Shader
 
 	timeSinceLastBox float32
 }
@@ -39,6 +40,13 @@ func (p *Plinko) PreSolve(contact box2d.B2ContactInterface, oldManifold box2d.B2
 func (p *Plinko) PostSolve(contact box2d.B2ContactInterface, impulse *box2d.B2ContactImpulse) {}
 
 func NewPlinko(cfg Config) *Plinko {
+	shader := rl.LoadShader("", "resources/shaders/glowing-lights.fs")
+	screenHeightLoc := rl.GetShaderLocation(shader, "screen_height")
+	scaleFactorLoc := rl.GetShaderLocation(shader, "scale")
+
+	rl.SetShaderValue(shader, screenHeightLoc, []float32{float32(cfg.WindowHeight) * cfg.ScaleFactor}, rl.ShaderUniformFloat)
+	rl.SetShaderValue(shader, scaleFactorLoc, []float32{cfg.ScaleFactor}, rl.ShaderUniformFloat)
+
 	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 98))
 
 	wallsDef := box2d.NewB2BodyDef()
@@ -46,16 +54,25 @@ func NewPlinko(cfg Config) *Plinko {
 	wallsDef.Position.Set(0, 0)
 	wallsBody := world.CreateBody(wallsDef)
 
-	leftWallShape := box2d.NewB2EdgeShape()
-	leftWallShape.Set(box2d.MakeB2Vec2(0, 0), box2d.MakeB2Vec2(0, float64(cfg.WindowHeight)))
-	wallsBody.CreateFixture(leftWallShape, 1)
+	//leftWallShape := box2d.NewB2EdgeShape()
+	//leftWallShape.Set(box2d.MakeB2Vec2(0, 0), box2d.MakeB2Vec2(0, float64(cfg.WindowHeight)))
+	//wallsBody.CreateFixture(leftWallShape, 1)
+	//
+	//rightWallShape := box2d.NewB2EdgeShape()
+	//rightWallShape.Set(box2d.MakeB2Vec2(float64(cfg.WindowWidth), 0), box2d.MakeB2Vec2(float64(cfg.WindowWidth), float64(cfg.WindowHeight)))
+	//wallsBody.CreateFixture(rightWallShape, 1)
 
-	rightWallShape := box2d.NewB2EdgeShape()
-	rightWallShape.Set(box2d.MakeB2Vec2(float64(cfg.WindowWidth), 0), box2d.MakeB2Vec2(float64(cfg.WindowWidth), float64(cfg.WindowHeight)))
-	wallsBody.CreateFixture(rightWallShape, 1)
+	var lightPositions []box2d.B2Vec2
+	lightPositionsBaseLoc := rl.GetShaderLocation(shader, "light_positions")
+	lightIntensitiesBaseLoc := rl.GetShaderLocation(shader, "light_intensities")
+	maxLightDistanceLoc := rl.GetShaderLocation(shader, "max_light_distance")
+	rl.SetShaderValue(shader, maxLightDistanceLoc, []float32{100.0}, rl.ShaderUniformFloat)
 
 	for y := 0; y < int(cfg.WindowHeight); y += 100 {
 		for x := 0; x < int(cfg.WindowWidth); x += 100 {
+			lightIntensityLoc := lightIntensitiesBaseLoc + int32(len(lightPositions))
+			lightPositionLoc := lightPositionsBaseLoc + int32(len(lightPositions))
+
 			pegBodyDef := box2d.NewB2BodyDef()
 			pegBodyDef.Type = box2d.B2BodyType.B2_dynamicBody
 			pegBodyDef.Position.Set(float64(x), float64(y)+25)
@@ -68,7 +85,7 @@ func NewPlinko(cfg Config) *Plinko {
 			pegShape.SetRadius(5)
 			pegFixture := pegBody.CreateFixture(pegShape, 1)
 			pegFixture.SetRestitution(0.2)
-			pegFixture.SetUserData(NewPlinkoPegDrawableContactListener(pegShape))
+			pegFixture.SetUserData(NewPlinkoPegDrawableContactListener(pegShape, shader, lightIntensityLoc, lightPositionLoc))
 
 			jointDef := box2d.MakeB2MouseJointDef()
 			jointDef.SetBodyA(wallsBody)
@@ -77,12 +94,20 @@ func NewPlinko(cfg Config) *Plinko {
 			jointDef.Target.Set(pegBody.GetPosition().X, pegBody.GetPosition().Y)
 			jointDef.MaxForce = 2500 * pegBody.GetMass()
 			world.CreateJoint(&jointDef)
+
+			rl.SetShaderValue(shader, lightIntensitiesBaseLoc+int32(len(lightPositions)), []float32{0}, rl.ShaderUniformFloat)
+			rl.SetShaderValue(shader, lightPositionsBaseLoc+int32(len(lightPositions)), []float32{float32(pegBody.GetPosition().X), float32(pegBody.GetPosition().Y)}, rl.ShaderUniformVec2)
+			lightPositions = append(lightPositions, pegBody.GetPosition())
 		}
 	}
 
+	numLightsLoc := rl.GetShaderLocation(shader, "num_lights")
+	rl.SetShaderValue(shader, numLightsLoc, []float32{float32(len(lightPositions))}, rl.ShaderUniformFloat)
+
 	plinko := &Plinko{
-		cfg:   cfg,
-		world: &world,
+		cfg:    cfg,
+		shader: shader,
+		world:  &world,
 	}
 
 	world.SetContactListener(plinko)
@@ -120,11 +145,7 @@ func (p *Plinko) Update(dt float32) error {
 }
 
 func (p *Plinko) Draw(debug bool) error {
-	rl.ClearBackground(rl.Black)
-
-	if debug {
-		DebugDrawWorld(p.world)
-	}
+	rl.ClearBackground(rl.DarkGray)
 
 	for body := p.world.GetBodyList(); body != nil; body = body.GetNext() {
 		for fixture := body.GetFixtureList(); fixture != nil; fixture = fixture.GetNext() {
@@ -132,6 +153,14 @@ func (p *Plinko) Draw(debug bool) error {
 				drawable.Draw(rl.GetFrameTime(), body, fixture)
 			}
 		}
+	}
+
+	rl.BeginShaderMode(p.shader)
+	rl.DrawRectangle(0, 0, p.cfg.WindowWidth, p.cfg.WindowHeight, rl.Black)
+	rl.EndShaderMode()
+
+	if debug {
+		DebugDrawWorld(p.world)
 	}
 
 	return nil
