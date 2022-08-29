@@ -13,8 +13,16 @@ type Plinko struct {
 	world  *box2d.B2World
 	shader rl.Shader
 
+	maskShader     rl.Shader
+	maskTextureLoc int32
+
 	timeSinceLastBox float32
+	paused           bool
+
+	lightingTexture rl.RenderTexture2D
 }
+
+var lightTexture rl.Texture2D
 
 func (p *Plinko) BeginContact(contact box2d.B2ContactInterface) {
 	if listener, ok := contact.GetFixtureA().GetUserData().(ContactListener); ok {
@@ -46,6 +54,20 @@ func NewPlinko(cfg Config) *Plinko {
 
 	rl.SetShaderValue(shader, screenHeightLoc, []float32{float32(cfg.WindowHeight) * cfg.ScaleFactor}, rl.ShaderUniformFloat)
 	rl.SetShaderValue(shader, scaleFactorLoc, []float32{cfg.ScaleFactor}, rl.ShaderUniformFloat)
+
+	lightingTexture := rl.LoadRenderTexture(cfg.WindowWidth*int32(cfg.ScaleFactor), cfg.WindowHeight*int32(cfg.ScaleFactor))
+	rl.BeginTextureMode(lightingTexture)
+	rl.DrawRectangle(0, 0, cfg.WindowWidth/2, cfg.WindowHeight/2, rl.White)
+	rl.DrawCircle(100, 100, 100, rl.Green)
+	rl.EndTextureMode()
+
+	lightTexture = rl.LoadTexture("resources/img/better_light_cone.png")
+
+	maskShader := rl.LoadShader("", "resources/shaders/alpha-mask.fs")
+	maskTextureLoc := rl.GetShaderLocation(maskShader, "texture1")
+	//rl.SetShaderValueTexture(maskShader, maskTextureLoc, lightingTexture.Texture)
+
+	//tmpShader = rl.LoadShader("", "resources/shaders/idk.fs")
 
 	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 98))
 
@@ -105,9 +127,12 @@ func NewPlinko(cfg Config) *Plinko {
 	rl.SetShaderValue(shader, numLightsLoc, []float32{float32(len(lightPositions))}, rl.ShaderUniformFloat)
 
 	plinko := &Plinko{
-		cfg:    cfg,
-		shader: shader,
-		world:  &world,
+		cfg:             cfg,
+		shader:          shader,
+		world:           &world,
+		lightingTexture: lightingTexture,
+		maskShader:      maskShader,
+		maskTextureLoc:  maskTextureLoc,
 	}
 
 	world.SetContactListener(plinko)
@@ -115,6 +140,14 @@ func NewPlinko(cfg Config) *Plinko {
 }
 
 func (p *Plinko) Update(dt float32) error {
+	if rl.IsKeyPressed(32) {
+		p.paused = !p.paused
+	}
+
+	if p.paused {
+		return nil
+	}
+
 	p.world.Step(float64(dt), 6, 2)
 
 	// Remove off-screen bodies
@@ -141,10 +174,18 @@ func (p *Plinko) Update(dt float32) error {
 		p.timeSinceLastBox = 0
 	}
 
+	p.prepareLightingMask()
+
 	return nil
 }
 
+// WUMBO ON
 func (p *Plinko) Draw(debug bool) error {
+	//var (
+	//	img    = rl.GenImageColor(800, 600, rl.Red)
+	//	imgtex = rl.LoadTextureFromImage(img)
+	//)
+
 	rl.ClearBackground(rl.DarkGray)
 
 	for body := p.world.GetBodyList(); body != nil; body = body.GetNext() {
@@ -155,13 +196,62 @@ func (p *Plinko) Draw(debug bool) error {
 		}
 	}
 
-	rl.BeginShaderMode(p.shader)
-	rl.DrawRectangle(0, 0, p.cfg.WindowWidth, p.cfg.WindowHeight, rl.Black)
+	// TODO: try blend mode subtractive instead of this shader because the shader is sloooow
+	//rl.BeginShaderMode(p.shader)
+	//rl.DrawRectangle(0, 0, p.cfg.WindowWidth, p.cfg.WindowHeight, rl.Black)
+	//rl.EndShaderMode()
+	//
+	rl.BeginShaderMode(p.maskShader)
+	//rl.SetShaderValueTexture(p.maskShader, p.maskTextureLoc, p.lightingTexture.Texture)
+	//rl.DrawRectangle(0, 0, p.cfg.WindowWidth, p.cfg.WindowHeight, rl.Black)
+	rl.DrawTexture(p.lightingTexture.Texture, 0, 0, rl.White)
 	rl.EndShaderMode()
+
+	c := rl.White
+	c.A = 120
+	//rl.DrawTexture(p.lightingTexture.Texture, 0, 0, rl.White)
+	//rl.DrawTexture(imgTex, 0, 0, rl.White)
+
+	//rl.BeginShaderMode(tmpShader)
+	//rl.DrawRectangle(0, 0, p.cfg.WindowWidth, p.cfg.WindowHeight, rl.White)
+	//rl.EndShaderMode()
 
 	if debug {
 		DebugDrawWorld(p.world)
 	}
 
 	return nil
+}
+
+func (p *Plinko) prepareLightingMask() {
+	rl.BeginTextureMode(p.lightingTexture)
+	c := rl.NewColor(0, 0, 0, 0)
+	rl.ClearBackground(c)
+	//rl.DrawRectangle(0, 0, p.cfg.WindowWidth, p.cfg.WindowHeight, rl.Black)
+	//rl.BeginBlendMode(rl.BlendCustom)
+
+	for body := p.world.GetBodyList(); body != nil; body = body.GetNext() {
+		for fixture := body.GetFixtureList(); fixture != nil; fixture = fixture.GetNext() {
+			if drawable, ok := fixture.GetUserData().(*PlinkoPegDrawableContactListener); ok {
+				v := drawable.fadeInOut.Value()
+				if v == 0 {
+					continue
+				}
+
+				worldPoint := body.GetWorldCenter()
+				offset := float32(75 * v)
+				//pos := rl.NewVector2(offset+float32(worldPoint.X), offset+float32(p.cfg.WindowHeight)-float32(worldPoint.Y))
+				//r := rl.NewRectangle(0, 0, 100, -100)
+
+				//rl.DrawTexturePro(lightTexture, r, r, pos, 0, rl.White)
+				//rl.DrawTextureRec(lightTexture, rl.NewRectangle(0, 0, 100, -100), pos, rl.White)
+
+				rl.DrawTextureEx(lightTexture, rl.NewVector2(offset+float32(worldPoint.X), offset+float32(p.cfg.WindowHeight)-float32(worldPoint.Y)), 180, float32(v)*1.5, rl.White)
+				//rl.DrawCircle(int32(worldPoint.X), p.cfg.WindowHeight-int32(worldPoint.Y), float32(v)*100, rl.White)
+			}
+		}
+	}
+
+	//rl.EndBlendMode()
+	rl.EndTextureMode()
 }

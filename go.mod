@@ -4,10 +4,11 @@ go 1.18
 
 require (
 	github.com/ByteArena/box2d v1.0.2
+	github.com/gen2brain/raylib-go/easings v0.0.0-20220827165820-0a5691486bab
 	github.com/gen2brain/raylib-go/raylib v0.0.0-20220323230550-c878e5c98a96
 	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.5.0
-	go.uber.org/atomic v1.9.0
+	github.com/spf13/viper v1.12.0
 )
 
 require (
@@ -22,8 +23,6 @@ require (
 	github.com/spf13/cast v1.5.0 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/spf13/viper v1.12.0 // indirect
-	github.com/stretchr/testify v1.7.1 // indirect
 	github.com/subosito/gotenv v1.3.0 // indirect
 	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8 // indirect
 	golang.org/x/text v0.3.7 // indirect

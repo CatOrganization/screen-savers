@@ -32,7 +32,7 @@ type PlinkoPegDrawableContactListener struct {
 func NewPlinkoPegDrawableContactListener(shape *box2d.B2CircleShape, shader rl.Shader, lightIntensityShaderLoc, lightPositionShaderLoc int32) *PlinkoPegDrawableContactListener {
 	return &PlinkoPegDrawableContactListener{
 		shape:                   shape,
-		fadeInOut:               effect.NewFadeInOut(time.Second/5, time.Second*2),
+		fadeInOut:               effect.NewFadeInOut(time.Second, time.Second),
 		shader:                  shader,
 		lightIntensityShaderLoc: lightIntensityShaderLoc,
 		lightPositionShaderLoc:  lightPositionShaderLoc,
