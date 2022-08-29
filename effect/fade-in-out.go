@@ -1,10 +1,9 @@
 package effect
 
 import (
+	"github.com/gen2brain/raylib-go/easings"
 	"math"
 	"time"
-
-	"github.com/gen2brain/raylib-go/easings"
 )
 
 type fadeInOutState string
@@ -39,7 +38,7 @@ func (f *FadeInOut) Value() float64 {
 	case fadeIn, fadeInPendingFadeout:
 		return float64(easings.ElasticOut(float32(f.value), 0, 1, 1))
 	case fadeOut:
-		return float64(easings.BounceIn(float32(f.value), 0, 1, 1))
+		return float64(easings.CubicIn(float32(f.value), 0, 1, 1))
 	default:
 		return f.value
 	}

@@ -23,19 +23,12 @@ type PlinkoPegDrawableContactListener struct {
 	fadeInOut     *effect.FadeInOut
 	totalContacts int
 	temperature   int
-
-	shader                  rl.Shader
-	lightIntensityShaderLoc int32
-	lightPositionShaderLoc  int32
 }
 
-func NewPlinkoPegDrawableContactListener(shape *box2d.B2CircleShape, shader rl.Shader, lightIntensityShaderLoc, lightPositionShaderLoc int32) *PlinkoPegDrawableContactListener {
+func NewPlinkoPegDrawableContactListener(shape *box2d.B2CircleShape) *PlinkoPegDrawableContactListener {
 	return &PlinkoPegDrawableContactListener{
-		shape:                   shape,
-		fadeInOut:               effect.NewFadeInOut(time.Second, time.Second),
-		shader:                  shader,
-		lightIntensityShaderLoc: lightIntensityShaderLoc,
-		lightPositionShaderLoc:  lightPositionShaderLoc,
+		shape:     shape,
+		fadeInOut: effect.NewFadeInOut(time.Second, time.Second),
 	}
 }
 
@@ -56,7 +49,6 @@ func (p *PlinkoPegDrawableContactListener) OnEndContact(contact box2d.B2ContactI
 	}
 }
 
-// TODO: use shaders to simulate light glow around pellets that are in contact
 func (p *PlinkoPegDrawableContactListener) Draw(dt float32, body *box2d.B2Body, fixture *box2d.B2Fixture) {
 	p.fadeInOut.Step(dt)
 
@@ -68,9 +60,6 @@ func (p *PlinkoPegDrawableContactListener) Draw(dt float32, body *box2d.B2Body, 
 		B: intensity,
 		A: 255, // maxUint8(25, uint8(255*p.fadeInOut.Value())),
 	}
-
-	rl.SetShaderValue(p.shader, p.lightIntensityShaderLoc, []float32{float32(p.fadeInOut.Value())}, rl.ShaderUniformFloat)
-	rl.SetShaderValue(p.shader, p.lightPositionShaderLoc, []float32{float32(body.GetPosition().X), float32(body.GetPosition().Y)}, rl.ShaderUniformVec2)
 
 	rl.DrawCircle(int32(worldCenter.X), int32(worldCenter.Y), float32(p.shape.GetRadius()), lightenColor(c))
 	rl.DrawCircleLines(int32(worldCenter.X), int32(worldCenter.Y), float32(p.shape.GetRadius()), c)
