@@ -63,7 +63,8 @@ func runE(_ *cobra.Command, args []string) error {
 	cfg.WindowWidth = int32(float64(cfg.WindowWidth) / scale)
 	cfg.WindowHeight = int32(float64(cfg.WindowHeight) / scale)
 	cfg.ScaleFactor = float32(scale)
-	v := visualizer.NewPlinko(cfg)
+	//v := visualizer.NewPlinko(cfg)
+	v := visualizer.NewFightClub(cfg)
 	debug := false
 
 	for !rl.WindowShouldClose() {

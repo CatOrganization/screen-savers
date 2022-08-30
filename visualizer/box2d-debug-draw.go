@@ -16,10 +16,37 @@ var bodyTypeColorMapping = map[uint8]rl.Color{
 func DebugDrawWorld(world *box2d.B2World) {
 	for body := world.GetBodyList(); body != nil; body = body.GetNext() {
 		DebugDrawBody(body)
-
-		//center := body.GetWorldCenter()
-		//rl.DrawCircle(int32(center.X), int32(center.Y), 2, rl.RayWhite)
 	}
+
+	for joint := world.GetJointList(); joint != nil; joint = joint.GetNext() {
+		DebugDrawJoint(joint)
+	}
+}
+
+func DebugDrawJoint(joint box2d.B2JointInterface) {
+	var anchorA, anchorB box2d.B2Vec2
+
+	switch joint.(type) {
+	case *box2d.B2DistanceJoint:
+		distanceJoint := joint.(*box2d.B2DistanceJoint)
+
+		anchorA = distanceJoint.M_bodyA.GetWorldPoint(distanceJoint.M_localAnchorA)
+		anchorB = distanceJoint.M_bodyB.GetWorldPoint(distanceJoint.M_localAnchorB)
+	case *box2d.B2MouseJoint:
+		mouseJoint := joint.(*box2d.B2MouseJoint)
+
+		anchorA = mouseJoint.M_targetA
+		anchorB = mouseJoint.M_bodyB.GetWorldPoint(mouseJoint.M_localAnchorB)
+	// TODO: more joints
+	default:
+		anchorA = joint.GetBodyA().GetPosition()
+		anchorB = joint.GetBodyB().GetPosition()
+	}
+
+	a := rl.NewVector2(float32(anchorA.X), float32(anchorA.Y))
+	b := rl.NewVector2(float32(anchorB.X), float32(anchorB.Y))
+
+	rl.DrawLineV(a, b, rl.SkyBlue)
 }
 
 func DebugDrawBody(body *box2d.B2Body) {
