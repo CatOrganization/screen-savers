@@ -7,12 +7,6 @@ import (
 	"image/color"
 )
 
-var bodyTypeColorMapping = map[uint8]rl.Color{
-	box2d.B2BodyType.B2_dynamicBody:   rl.Pink,
-	box2d.B2BodyType.B2_staticBody:    rl.DarkGreen,
-	box2d.B2BodyType.B2_kinematicBody: rl.DarkBlue,
-}
-
 func DebugDrawWorld(world *box2d.B2World) {
 	for body := world.GetBodyList(); body != nil; body = body.GetNext() {
 		DebugDrawBody(body)
@@ -37,6 +31,11 @@ func DebugDrawJoint(joint box2d.B2JointInterface) {
 
 		anchorA = mouseJoint.M_targetA
 		anchorB = mouseJoint.M_bodyB.GetWorldPoint(mouseJoint.M_localAnchorB)
+	case *box2d.B2RevoluteJoint:
+		revoluteJoint := joint.(*box2d.B2RevoluteJoint)
+
+		anchorA = revoluteJoint.M_bodyA.GetWorldPoint(revoluteJoint.M_localAnchorA)
+		anchorB = revoluteJoint.M_bodyB.GetWorldPoint(revoluteJoint.M_localAnchorB)
 	// TODO: more joints
 	default:
 		anchorA = joint.GetBodyA().GetPosition()
@@ -60,7 +59,7 @@ func DebugDrawShape(body *box2d.B2Body, shape box2d.B2ShapeInterface) {
 	case *box2d.B2CircleShape:
 		DebugDrawCircleShape(body, shape.(*box2d.B2CircleShape))
 	case *box2d.B2PolygonShape:
-		DebugDrawPolygonShape(body, shape.(*box2d.B2PolygonShape))
+		DebugDrawPolygonShape(body, shape.(*box2d.B2PolygonShape), colorForBody(body))
 	case *box2d.B2EdgeShape:
 		DebugDrawEdgeShape(body, shape.(*box2d.B2EdgeShape))
 	default:
@@ -70,13 +69,13 @@ func DebugDrawShape(body *box2d.B2Body, shape box2d.B2ShapeInterface) {
 
 func DebugDrawCircleShape(body *box2d.B2Body, circle *box2d.B2CircleShape) {
 	worldCenter := body.GetWorldPoint(circle.M_p)
-	color := bodyTypeColorMapping[body.M_type]
+	color := colorForBody(body)
 
 	rl.DrawCircle(int32(worldCenter.X), int32(worldCenter.Y), float32(circle.GetRadius()), lightenColor(color))
 	rl.DrawCircleLines(int32(worldCenter.X), int32(worldCenter.Y), float32(circle.GetRadius()), color)
 }
 
-func DebugDrawPolygonShape(body *box2d.B2Body, polygon *box2d.B2PolygonShape) {
+func DebugDrawPolygonShape(body *box2d.B2Body, polygon *box2d.B2PolygonShape, color rl.Color) {
 	for i := 0; i < polygon.M_count; i++ {
 		v1Index := (i - 1 + polygon.M_count) % polygon.M_count
 
@@ -99,10 +98,8 @@ func DebugDrawPolygonShape(body *box2d.B2Body, polygon *box2d.B2PolygonShape) {
 			Y: float32(worldCentroid.Y),
 		}
 
-		c := bodyTypeColorMapping[body.M_type]
-		rl.DrawTriangle(centroid, v2, v1, lightenColor(c))
-		rl.DrawLineV(v1, v2, c)
-
+		rl.DrawTriangle(centroid, v2, v1, lightenColor(color))
+		rl.DrawLineV(v1, v2, color)
 	}
 }
 
@@ -111,7 +108,24 @@ func DebugDrawEdgeShape(body *box2d.B2Body, edge *box2d.B2EdgeShape) {
 	worldV1 := body.GetWorldPoint(edge.M_vertex1)
 	worldV2 := body.GetWorldPoint(edge.M_vertex2)
 
-	rl.DrawLine(int32(worldV1.X), int32(worldV1.Y), int32(worldV2.X), int32(worldV2.Y), bodyTypeColorMapping[body.M_type])
+	rl.DrawLine(int32(worldV1.X), int32(worldV1.Y), int32(worldV2.X), int32(worldV2.Y), colorForBody(body))
+}
+
+func colorForBody(body *box2d.B2Body) color.RGBA {
+	switch body.GetType() {
+	case box2d.B2BodyType.B2_staticBody:
+		return rl.DarkGreen
+	case box2d.B2BodyType.B2_kinematicBody:
+		return rl.DarkBlue
+	case box2d.B2BodyType.B2_dynamicBody:
+		if body.M_flags&box2d.B2Body_Flags.E_awakeFlag == box2d.B2Body_Flags.E_awakeFlag {
+			return rl.Pink
+		} else {
+			return rl.DarkGray
+		}
+	}
+
+	return rl.Red
 }
 
 func lightenColor(c color.RGBA) color.RGBA {

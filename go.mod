@@ -11,6 +11,8 @@ require (
 	github.com/spf13/viper v1.12.0
 )
 
+//replace github.com/ByteArena/box2d => ../box2d
+
 require (
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect

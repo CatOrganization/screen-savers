@@ -150,7 +150,7 @@ type PlinkoPelletDrawable struct {
 }
 
 func (p PlinkoPelletDrawable) Draw(body *box2d.B2Body, fixture *box2d.B2Fixture) {
-	DebugDrawPolygonShape(body, p.shape)
+	DebugDrawPolygonShape(body, p.shape, colorForBody(body))
 }
 
 func minUint8(a, b uint8) uint8 {
