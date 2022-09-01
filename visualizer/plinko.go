@@ -150,7 +150,7 @@ func (p *Plinko) Draw(debug bool) error {
 	rl.EndShaderMode()
 
 	if debug {
-		DebugDrawWorld(p.world)
+		DebugDrawWorld(p.world, 1)
 	}
 
 	return nil

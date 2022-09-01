@@ -145,14 +145,6 @@ func (p *PlinkoPelletDrawableContactListener) Draw(dt float32, body *box2d.B2Bod
 	}
 }
 
-type PlinkoPelletDrawable struct {
-	shape *box2d.B2PolygonShape
-}
-
-func (p PlinkoPelletDrawable) Draw(body *box2d.B2Body, fixture *box2d.B2Fixture) {
-	DebugDrawPolygonShape(body, p.shape, colorForBody(body))
-}
-
 func minUint8(a, b uint8) uint8 {
 	if a < b {
 		return a

@@ -12,7 +12,8 @@ type SoftBodyBall struct {
 	EdgeBodies []*box2d.B2Body
 	edgeLength float64
 
-	Color rl.Color
+	Color                rl.Color
+	PhysicsToRenderScale float64
 }
 
 type SoftBodyBallOptions struct {
@@ -23,10 +24,13 @@ type SoftBodyBallOptions struct {
 
 	Restitution float64
 	Friction    float64
+
+	Color                rl.Color
+	PhysicsToRenderScale float64
 }
 
 func NewSoftBodyBall(world *box2d.B2World, bodyDef *box2d.B2BodyDef, radius float64, components int, options SoftBodyBallOptions) *SoftBodyBall {
-	ball := &SoftBodyBall{Color: rl.Red}
+	ball := &SoftBodyBall{Color: options.Color, PhysicsToRenderScale: options.PhysicsToRenderScale}
 	ball.edgeLength = math.Sin(math.Pi/float64(components)) * radius
 
 	ball.CenterBody = world.CreateBody(bodyDef)
@@ -34,7 +38,7 @@ func NewSoftBodyBall(world *box2d.B2World, bodyDef *box2d.B2BodyDef, radius floa
 	center := bodyDef.Position
 
 	centerBallShape := box2d.NewB2CircleShape()
-	centerBallShape.SetRadius(5)
+	centerBallShape.SetRadius(0.5)
 
 	centerBallFixture := ball.CenterBody.CreateFixture(centerBallShape, options.Density)
 	centerBallFixture.SetRestitution(0.75)
@@ -56,7 +60,7 @@ func NewSoftBodyBall(world *box2d.B2World, bodyDef *box2d.B2BodyDef, radius floa
 		edgeBody := world.CreateBody(edgeBodyDef)
 
 		edgeShape := box2d.NewB2PolygonShape()
-		edgeShape.SetAsBox(ball.edgeLength, 2)
+		edgeShape.SetAsBox(ball.edgeLength, 0.3)
 
 		edgeFixture := edgeBody.CreateFixture(edgeShape, options.Density)
 		edgeFixture.SetRestitution(options.Restitution)
@@ -78,9 +82,6 @@ func NewSoftBodyBall(world *box2d.B2World, bodyDef *box2d.B2BodyDef, radius floa
 		e1 := ball.EdgeBodies[i]
 		e2 := ball.EdgeBodies[(i+1)%components]
 
-		//deltaPos := box2d.MakeB2Vec2(e1.GetPosition().X-e2.GetPosition().X, e1.GetPosition().Y-e2.GetPosition().Y)
-		//halfDeltaPos := box2d.MakeB2Vec2(deltaPos.X/2, deltaPos.Y/2)
-
 		edgeToEdgeJoint := box2d.MakeB2RevoluteJointDef()
 		edgeToEdgeJoint.BodyA = e1
 		edgeToEdgeJoint.LocalAnchorA = box2d.MakeB2Vec2(-ball.edgeLength, 0)
@@ -96,6 +97,8 @@ func NewSoftBodyBall(world *box2d.B2World, bodyDef *box2d.B2BodyDef, radius floa
 func (s *SoftBodyBall) Draw(dt float32, body *box2d.B2Body, fixture *box2d.B2Fixture) {
 	ballCenterPos := s.CenterBody.GetPosition()
 	centerPos := rl.NewVector2(float32(s.CenterBody.GetPosition().X), float32(s.CenterBody.GetPosition().Y))
+	centerPos.X *= float32(s.PhysicsToRenderScale)
+	centerPos.Y *= float32(s.PhysicsToRenderScale)
 
 	for i := range s.EdgeBodies {
 		e1 := s.EdgeBodies[i]
@@ -107,11 +110,11 @@ func (s *SoftBodyBall) Draw(dt float32, body *box2d.B2Body, fixture *box2d.B2Fix
 		e1Theta := math.Acos(box2d.B2Vec2Dot(e1Center, ballCenterPos) / (e1Center.Length() * ballCenterPos.Length()))
 		e2Theta := math.Acos(box2d.B2Vec2Dot(e2Center, ballCenterPos) / (e2Center.Length() * ballCenterPos.Length()))
 
-		e1Offset := e1.GetWorldPoint(box2d.MakeB2Vec2(-math.Sin(e1Theta)*2, -math.Cos(e1Theta)*2))
-		e2Offset := e2.GetWorldPoint(box2d.MakeB2Vec2(-math.Sin(e2Theta)*2, -math.Cos(e2Theta)*2))
+		e1Offset := e1.GetWorldPoint(box2d.MakeB2Vec2(-math.Sin(e1Theta)*0.3, -math.Cos(e1Theta)*0.3))
+		e2Offset := e2.GetWorldPoint(box2d.MakeB2Vec2(-math.Sin(e2Theta)*0.3, -math.Cos(e2Theta)*0.3))
 
-		e1Pos := rl.NewVector2(float32(e1Offset.X), float32(e1Offset.Y))
-		e2Pos := rl.NewVector2(float32(e2Offset.X), float32(e2Offset.Y))
+		e1Pos := rl.NewVector2(float32(e1Offset.X*s.PhysicsToRenderScale), float32(e1Offset.Y*s.PhysicsToRenderScale))
+		e2Pos := rl.NewVector2(float32(e2Offset.X*s.PhysicsToRenderScale), float32(e2Offset.Y*s.PhysicsToRenderScale))
 
 		rl.DrawTriangle(e1Pos, e2Pos, centerPos, lightenColor(s.Color))
 		rl.DrawLineV(e1Pos, e2Pos, s.Color)

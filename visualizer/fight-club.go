@@ -10,10 +10,14 @@ import (
 	"time"
 )
 
+const PhysicsToRenderScale = 10
+
 var colors = []rl.Color{rl.RayWhite, rl.Blue, rl.Red, rl.Gold, rl.SkyBlue, rl.Purple, rl.Pink, rl.Beige}
 
 type FightClub struct {
 	cfg Config
+
+	physicsWidth, physicsHeight float64
 
 	world *box2d.B2World
 	floor *box2d.B2Body
@@ -24,26 +28,29 @@ type FightClub struct {
 }
 
 func NewFightClub(cfg Config) *FightClub {
-	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 98*2))
+	world := box2d.MakeB2World(box2d.MakeB2Vec2(0, 9.8))
+
+	physicsWidth := float64(cfg.WindowWidth / PhysicsToRenderScale)
+	physicsHeight := float64(cfg.WindowHeight / PhysicsToRenderScale)
 
 	wallsBodyDef := box2d.NewB2BodyDef()
 	wallsBodyDef.Type = box2d.B2BodyType.B2_staticBody
 	wallsBody := world.CreateBody(wallsBodyDef)
 
 	floorEdge := box2d.NewB2EdgeShape()
-	floorEdge.Set(box2d.MakeB2Vec2(0, float64(cfg.WindowHeight)), box2d.MakeB2Vec2(float64(cfg.WindowWidth), float64(cfg.WindowHeight)))
+	floorEdge.Set(box2d.MakeB2Vec2(0, physicsHeight), box2d.MakeB2Vec2(physicsWidth, physicsHeight))
 	floorFixture := wallsBody.CreateFixture(floorEdge, 1)
 	floorFixture.SetRestitution(0.5)
 	floorFixture.SetFriction(0.75)
 
 	leftWallEdge := box2d.NewB2EdgeShape()
-	leftWallEdge.Set(box2d.MakeB2Vec2(1, float64(cfg.WindowHeight)), box2d.MakeB2Vec2(1, -float64(cfg.WindowHeight)))
+	leftWallEdge.Set(box2d.MakeB2Vec2(0, physicsHeight), box2d.MakeB2Vec2(0, -physicsHeight))
 	leftWallFixture := wallsBody.CreateFixture(leftWallEdge, 1)
 	leftWallFixture.SetRestitution(0.5)
 	leftWallFixture.SetFriction(0.75)
 
 	rightWallEdge := box2d.NewB2EdgeShape()
-	rightWallEdge.Set(box2d.MakeB2Vec2(float64(cfg.WindowWidth), float64(cfg.WindowHeight)), box2d.MakeB2Vec2(float64(cfg.WindowWidth), -float64(cfg.WindowHeight)))
+	rightWallEdge.Set(box2d.MakeB2Vec2(physicsWidth, physicsHeight), box2d.MakeB2Vec2(physicsWidth, -physicsHeight))
 	rightWallFixture := wallsBody.CreateFixture(rightWallEdge, 1)
 	rightWallFixture.SetRestitution(0.5)
 	rightWallFixture.SetFriction(0.75)
@@ -60,14 +67,15 @@ func NewFightClub(cfg Config) *FightClub {
 	//physics.NewSoftBodyBall2(&world, box2d.MakeB2Vec2(325, 100), 40, 10).Color = rl.DarkGreen
 
 	viz := &FightClub{
-		cfg:    cfg,
-		world:  &world,
-		paused: true,
+		cfg:           cfg,
+		physicsWidth:  physicsWidth,
+		physicsHeight: physicsHeight,
+		world:         &world,
 	}
 
 	rand.Seed(time.Now().Unix())
 
-	viz.GenerateObjects(1)
+	viz.GenerateObjects(5)
 	viz.GenerateFloor(int(cfg.WindowWidth / 25))
 
 	return viz
@@ -139,7 +147,7 @@ func (f *FightClub) Draw(debug bool) error {
 		rl.DrawText(fmt.Sprintf("inertia:  %.2f", b.GetInertia()), 10, 330, 32, rl.RayWhite)
 		rl.DrawText(fmt.Sprintf("force:  (%.2f, %.2f)", b.M_force.X, b.M_force.Y), 10, 370, 32, rl.RayWhite)
 
-		DebugDrawWorld(f.world)
+		DebugDrawWorld(f.world, PhysicsToRenderScale)
 	}
 
 	return nil
@@ -169,24 +177,26 @@ func (f *FightClub) GenerateObjects(numObjects int) {
 }
 
 func (f *FightClub) GenerateSoftBall() {
-	radius := 25 + rand.Float64()*50
-	bodyDef := f.randomizedBodyDef(radius + 10)
+	radius := 2.5 + rand.Float64()*5
+	bodyDef := f.randomizedBodyDef(radius + 1)
 
 	opts := physics.SoftBodyBallOptions{
-		Density:           radius / 5,
-		SpringFrequencyHz: 2 + rand.Float64()*10,
+		Density:           radius,
+		SpringFrequencyHz: 4 + rand.Float64()*10,
 		SpringDampingHz:   0.1 + rand.Float64()*0.75,
-		Restitution:       0.25 + (rand.Float64() * 0.75),
+		Restitution:       0.25 + (rand.Float64() * 0.5),
 		Friction:          0.25 + (rand.Float64() * 0.75),
+
+		Color:                randomColor(),
+		PhysicsToRenderScale: PhysicsToRenderScale,
 	}
 
-	ball := physics.NewSoftBodyBall(f.world, bodyDef, radius, int(radius/3), opts)
-	ball.Color = randomColor()
+	physics.NewSoftBodyBall(f.world, bodyDef, radius, int(radius*4), opts)
 }
 
 func (f *FightClub) GenerateBox() {
-	width := (5 + rand.Float64()*75) / 1
-	height := (5 + rand.Float64()*75) / 1
+	width := 0.5 + rand.Float64()*7.5
+	height := 0.5 + rand.Float64()*7.5
 
 	body := f.world.CreateBody(f.randomizedBodyDef(math.Max(width, height) + 10))
 
@@ -195,7 +205,7 @@ func (f *FightClub) GenerateBox() {
 
 	fixture := body.CreateFixture(shape, 1)
 	fixture.SetFriction(0.25 + (rand.Float64() * 0.75))
-	fixture.SetRestitution(0.25 + (rand.Float64() * 0.75))
+	fixture.SetRestitution(0.1 + (rand.Float64() * 0.4))
 	fixture.SetUserData(&FightClubBoxDrawable{shape: shape, color: randomColor()})
 }
 
@@ -203,13 +213,13 @@ func (f *FightClub) randomizedBodyDef(xPosBuffer float64) *box2d.B2BodyDef {
 	bodyDef := box2d.NewB2BodyDef()
 	bodyDef.Type = box2d.B2BodyType.B2_dynamicBody
 
-	bodyDef.Position.X = xPosBuffer + rand.Float64()*(float64(f.cfg.WindowWidth/1)-(2*xPosBuffer))
-	bodyDef.Position.Y = -rand.Float64() * float64(f.cfg.WindowHeight/1)
-	bodyDef.LinearVelocity.X = -1000 + (rand.Float64() * 2000)
-	bodyDef.LinearVelocity.Y = 200 + rand.Float64()*1000
+	bodyDef.Position.X = xPosBuffer + rand.Float64()*(f.physicsWidth-(2*xPosBuffer))
+	bodyDef.Position.Y = -rand.Float64() * f.physicsHeight
+	bodyDef.LinearVelocity.X = -50 + (rand.Float64() * 100)
+	bodyDef.LinearVelocity.Y = 5 + rand.Float64()*5
 
 	bodyDef.Angle = rand.Float64() * math.Pi
-	bodyDef.AngularVelocity = rand.Float64() * math.Pi * 2
+	bodyDef.AngularVelocity = rand.Float64() * math.Pi
 
 	return bodyDef
 }
@@ -218,7 +228,6 @@ func randomColor() rl.Color {
 	return colors[rand.Intn(len(colors))]
 }
 
-// TODO: it's all too big :(
 func (f *FightClub) GenerateFloor(segments int) {
 	if f.floor != nil {
 		f.world.DestroyBody(f.floor)
@@ -229,11 +238,11 @@ func (f *FightClub) GenerateFloor(segments int) {
 
 	f.floor = f.world.CreateBody(floorDef)
 
-	segmentLength := float64(f.cfg.WindowWidth) / float64(segments)
-	heightVariance := float64(f.cfg.WindowHeight / 2)
+	segmentLength := f.physicsWidth / float64(segments)
+	heightVariance := f.physicsHeight / 2
 
-	point := box2d.MakeB2Vec2(0, (float64(f.cfg.WindowHeight)-heightVariance)+(rand.Float64()*heightVariance))
-	points := []rl.Vector2{rl.NewVector2(float32(point.X), float32(point.Y))}
+	point := box2d.MakeB2Vec2(0, (f.physicsHeight-heightVariance)+(rand.Float64()*heightVariance))
+	points := []rl.Vector2{rl.NewVector2(float32(point.X*PhysicsToRenderScale), float32(point.Y*PhysicsToRenderScale))}
 	prevAngle := float64(0)
 
 	for i := 0; i < segments; i++ {
@@ -242,8 +251,8 @@ func (f *FightClub) GenerateFloor(segments int) {
 
 		h := segmentLength * math.Tan(nextAngle)
 		nextY := point.Y + h
-		nextY = math.Min(float64(f.cfg.WindowHeight-10), nextY)
-		nextY = math.Max(float64(f.cfg.WindowHeight)-heightVariance, nextY)
+		nextY = math.Min(f.physicsHeight-1, nextY)
+		nextY = math.Max(f.physicsHeight-heightVariance, nextY)
 
 		nextPoint := box2d.MakeB2Vec2(point.X+segmentLength, nextY)
 
@@ -257,7 +266,7 @@ func (f *FightClub) GenerateFloor(segments int) {
 		prevAngle = math.Atan2(box2d.B2Vec2Sub(nextPoint, point).Y, box2d.B2Vec2Sub(nextPoint, point).X)
 
 		point = nextPoint
-		points = append(points, rl.NewVector2(float32(point.X), float32(point.Y)))
+		points = append(points, rl.NewVector2(float32(point.X*PhysicsToRenderScale), float32(point.Y*PhysicsToRenderScale)))
 	}
 
 	f.floor.SetUserData(&FightClubFloorDrawable{points: points, floorHeight: float32(f.cfg.WindowHeight)})

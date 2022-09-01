@@ -11,7 +11,7 @@ type FightClubBoxDrawable struct {
 }
 
 func (f *FightClubBoxDrawable) Draw(_ float32, body *box2d.B2Body, fixture *box2d.B2Fixture) {
-	DebugDrawPolygonShape(body, f.shape, f.color)
+	DebugDrawPolygonShape(body, f.shape, f.color, PhysicsToRenderScale)
 }
 
 type FightClubFloorDrawable struct {

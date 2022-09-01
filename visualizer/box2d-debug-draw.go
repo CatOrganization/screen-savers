@@ -7,17 +7,17 @@ import (
 	"image/color"
 )
 
-func DebugDrawWorld(world *box2d.B2World) {
+func DebugDrawWorld(world *box2d.B2World, scale float64) {
 	for body := world.GetBodyList(); body != nil; body = body.GetNext() {
-		DebugDrawBody(body)
+		DebugDrawBody(body, scale)
 	}
 
 	for joint := world.GetJointList(); joint != nil; joint = joint.GetNext() {
-		DebugDrawJoint(joint)
+		DebugDrawJoint(joint, scale)
 	}
 }
 
-func DebugDrawJoint(joint box2d.B2JointInterface) {
+func DebugDrawJoint(joint box2d.B2JointInterface, scale float64) {
 	var anchorA, anchorB box2d.B2Vec2
 
 	switch joint.(type) {
@@ -42,40 +42,40 @@ func DebugDrawJoint(joint box2d.B2JointInterface) {
 		anchorB = joint.GetBodyB().GetPosition()
 	}
 
-	a := rl.NewVector2(float32(anchorA.X), float32(anchorA.Y))
-	b := rl.NewVector2(float32(anchorB.X), float32(anchorB.Y))
+	a := rl.NewVector2(float32(anchorA.X*scale), float32(anchorA.Y*scale))
+	b := rl.NewVector2(float32(anchorB.X*scale), float32(anchorB.Y*scale))
 
 	rl.DrawLineV(a, b, rl.SkyBlue)
 }
 
-func DebugDrawBody(body *box2d.B2Body) {
+func DebugDrawBody(body *box2d.B2Body, scale float64) {
 	for fixture := body.GetFixtureList(); fixture != nil; fixture = fixture.GetNext() {
-		DebugDrawShape(body, fixture.GetShape())
+		DebugDrawShape(body, fixture.GetShape(), scale)
 	}
 }
 
-func DebugDrawShape(body *box2d.B2Body, shape box2d.B2ShapeInterface) {
+func DebugDrawShape(body *box2d.B2Body, shape box2d.B2ShapeInterface, scale float64) {
 	switch shape.(type) {
 	case *box2d.B2CircleShape:
-		DebugDrawCircleShape(body, shape.(*box2d.B2CircleShape))
+		DebugDrawCircleShape(body, shape.(*box2d.B2CircleShape), scale)
 	case *box2d.B2PolygonShape:
-		DebugDrawPolygonShape(body, shape.(*box2d.B2PolygonShape), colorForBody(body))
+		DebugDrawPolygonShape(body, shape.(*box2d.B2PolygonShape), colorForBody(body), scale)
 	case *box2d.B2EdgeShape:
-		DebugDrawEdgeShape(body, shape.(*box2d.B2EdgeShape))
+		DebugDrawEdgeShape(body, shape.(*box2d.B2EdgeShape), scale)
 	default:
 		fmt.Printf("unknown shape: %T", shape)
 	}
 }
 
-func DebugDrawCircleShape(body *box2d.B2Body, circle *box2d.B2CircleShape) {
+func DebugDrawCircleShape(body *box2d.B2Body, circle *box2d.B2CircleShape, scale float64) {
 	worldCenter := body.GetWorldPoint(circle.M_p)
-	color := colorForBody(body)
+	c := colorForBody(body)
 
-	rl.DrawCircle(int32(worldCenter.X), int32(worldCenter.Y), float32(circle.GetRadius()), lightenColor(color))
-	rl.DrawCircleLines(int32(worldCenter.X), int32(worldCenter.Y), float32(circle.GetRadius()), color)
+	rl.DrawCircle(int32(worldCenter.X*scale), int32(worldCenter.Y*scale), float32(circle.GetRadius()*scale), lightenColor(c))
+	rl.DrawCircleLines(int32(worldCenter.X*scale), int32(worldCenter.Y*scale), float32(circle.GetRadius()*scale), c)
 }
 
-func DebugDrawPolygonShape(body *box2d.B2Body, polygon *box2d.B2PolygonShape, color rl.Color) {
+func DebugDrawPolygonShape(body *box2d.B2Body, polygon *box2d.B2PolygonShape, color rl.Color, scale float64) {
 	for i := 0; i < polygon.M_count; i++ {
 		v1Index := (i - 1 + polygon.M_count) % polygon.M_count
 
@@ -84,18 +84,18 @@ func DebugDrawPolygonShape(body *box2d.B2Body, polygon *box2d.B2PolygonShape, co
 		worldCentroid := body.GetWorldPoint(polygon.M_centroid)
 
 		v1 := rl.Vector2{
-			X: float32(worldV1.X),
-			Y: float32(worldV1.Y),
+			X: float32(worldV1.X * scale),
+			Y: float32(worldV1.Y * scale),
 		}
 
 		v2 := rl.Vector2{
-			X: float32(worldV2.X),
-			Y: float32(worldV2.Y),
+			X: float32(worldV2.X * scale),
+			Y: float32(worldV2.Y * scale),
 		}
 
 		centroid := rl.Vector2{
-			X: float32(worldCentroid.X),
-			Y: float32(worldCentroid.Y),
+			X: float32(worldCentroid.X * scale),
+			Y: float32(worldCentroid.Y * scale),
 		}
 
 		rl.DrawTriangle(centroid, v2, v1, lightenColor(color))
@@ -103,12 +103,15 @@ func DebugDrawPolygonShape(body *box2d.B2Body, polygon *box2d.B2PolygonShape, co
 	}
 }
 
-func DebugDrawEdgeShape(body *box2d.B2Body, edge *box2d.B2EdgeShape) {
+func DebugDrawEdgeShape(body *box2d.B2Body, edge *box2d.B2EdgeShape, scale float64) {
 	// TODO: handle v0 and v3?
 	worldV1 := body.GetWorldPoint(edge.M_vertex1)
 	worldV2 := body.GetWorldPoint(edge.M_vertex2)
 
-	rl.DrawLine(int32(worldV1.X), int32(worldV1.Y), int32(worldV2.X), int32(worldV2.Y), colorForBody(body))
+	p1 := rl.NewVector2(float32(worldV1.X*scale), float32(worldV1.Y*scale))
+	p2 := rl.NewVector2(float32(worldV2.X*scale), float32(worldV2.Y*scale))
+
+	rl.DrawLineV(p1, p2, colorForBody(body))
 }
 
 func colorForBody(body *box2d.B2Body) color.RGBA {
